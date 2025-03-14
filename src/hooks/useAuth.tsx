@@ -1,7 +1,7 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { beRealApi } from "@/services/beRealApiService";
+import { OTPResponse } from "@/types/beRealTypes";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -20,14 +20,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
   const { toast } = useToast();
 
-  // Check if user is already logged in
   useEffect(() => {
     const checkAuth = () => {
       const isAuth = beRealApi.isAuthenticated();
       setIsAuthenticated(isAuth);
       
       if (isAuth) {
-        // Get user data from localStorage
         const storedUser = localStorage.getItem("beview_user");
         if (storedUser) {
           setUser(JSON.parse(storedUser));
@@ -44,9 +42,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       console.log(`Sending OTP to ${phoneNumber}`);
-      const success = await beRealApi.sendOTP(phoneNumber);
+      const result: OTPResponse = await beRealApi.sendOTP(phoneNumber);
       
-      if (success) {
+      if (result.success) {
         toast({
           title: "OTP Sent",
           description: "Please check your phone for the verification code.",
@@ -54,17 +52,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         toast({
           title: "Failed to send OTP",
-          description: "Please check your phone number and try again.",
+          description: result.message || "Please check your phone number and try again.",
           variant: "destructive",
         });
       }
       
-      return success;
+      return result.success;
     } catch (error) {
       console.error("Send OTP error:", error);
       toast({
         title: "Error",
-        description: "Failed to send verification code. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to send verification code. Please try again.",
         variant: "destructive",
       });
       return false;
@@ -77,17 +75,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       console.log(`Verifying OTP for ${phoneNumber} with code ${code}`);
-      const success = await beRealApi.verifyOTP(phoneNumber, code);
+      const result: OTPResponse = await beRealApi.verifyOTP(phoneNumber, code);
       
-      if (success) {
-        // For development purposes, create a basic user object
+      if (result.success) {
         const userData = {
           id: localStorage.getItem("bereal_user_id") || "unknown",
           username: phoneNumber,
           phone: phoneNumber,
         };
         
-        // Store user data
         localStorage.setItem("beview_user", JSON.stringify(userData));
         
         setUser(userData);
@@ -100,17 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         toast({
           title: "Verification failed",
-          description: "Invalid code. Please try again.",
+          description: result.message || "Invalid code. Please try again.",
           variant: "destructive",
         });
       }
       
-      return success;
+      return result.success;
     } catch (error) {
       console.error("Verify OTP error:", error);
       toast({
         title: "Error",
-        description: "Failed to verify code. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to verify code. Please try again.",
         variant: "destructive",
       });
       return false;

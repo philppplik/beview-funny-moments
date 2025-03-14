@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
@@ -21,12 +20,23 @@ const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Validate E.164 format - international phone number format
   const isValidPhoneNumber = (phone: string) => {
-    // Simplified validation - should be improved with a library like libphonenumber-js
     const e164Regex = /^\+[1-9]\d{1,14}$/;
     return e164Regex.test(phone);
-  };
+  }
+
+  const normalizePhoneNumber = (phone: string): string => {
+    let normalized = phone.replace(/\D/g, "");
+    
+    if (!normalized.startsWith("+")) {
+      if (!normalized.startsWith("1")) {
+        normalized = "1" + normalized;
+      }
+      normalized = "+" + normalized;
+    }
+    
+    return normalized;
+  }
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,18 +50,8 @@ const Login = () => {
       return;
     }
     
-    // Normalize phone number
-    let normalizedPhone = phoneNumber.replace(/\D/g, "");
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
     
-    // Ensure it has country code
-    if (!normalizedPhone.startsWith("+")) {
-      if (!normalizedPhone.startsWith("1")) {
-        normalizedPhone = "1" + normalizedPhone; // Default to US
-      }
-      normalizedPhone = "+" + normalizedPhone;
-    }
-    
-    // Validate the phone number
     if (!isValidPhoneNumber(normalizedPhone)) {
       toast({
         title: "Invalid Phone Number",
@@ -67,7 +67,6 @@ const Login = () => {
       const success = await sendOTP(normalizedPhone);
       if (success) {
         setOtpSent(true);
-        // Update the phone number with normalized version
         setPhoneNumber(normalizedPhone);
       } else {
         toast({
@@ -141,7 +140,6 @@ const Login = () => {
           </CardHeader>
           
           {!otpSent ? (
-            // Phone number form
             <form onSubmit={handleSendOTP}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -179,7 +177,6 @@ const Login = () => {
               </CardFooter>
             </form>
           ) : (
-            // OTP verification form
             <form onSubmit={handleVerifyOTP}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
