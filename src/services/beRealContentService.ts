@@ -1,6 +1,5 @@
-
 import { BeRealPost } from "../types/beRealTypes";
-import { PROXY_URL, BEREAL_API_BASE_URL, handleApiResponse } from "./apiUtils";
+import { PROXY_URL, handleApiResponse } from "./apiUtils";
 import { beRealAuth } from "./beRealAuthService";
 
 class BeRealContentService {
@@ -18,10 +17,11 @@ class BeRealContentService {
     };
 
     try {
-      const response = await fetch(`${PROXY_URL}${BEREAL_API_BASE_URL}${endpoint}`, {
+      // Now we can call the proxy directly without prepending BEREAL_API_BASE_URL
+      // Our proxy will handle that part
+      const response = await fetch(`${PROXY_URL}${endpoint}`, {
         ...options,
-        headers,
-        mode: 'cors'
+        headers
       });
 
       if (response.status === 401) {

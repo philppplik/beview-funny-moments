@@ -1,11 +1,11 @@
 
 // API configuration
 export const API_CONFIG = {
-  // BeReal API base URL
+  // BeReal API base URL (this is just for reference)
   baseUrl: "https://mobile.bereal.com/api",
   
-  // CORS proxy for development
-  corsProxy: "https://cors-anywhere.herokuapp.com/",
+  // Our Supabase Edge Function CORS proxy
+  corsProxy: "https://ekdizcuhtpxlxyodpdmb.supabase.co/functions/v1/bereal-proxy/",
   
   // Timeout for API requests in milliseconds
   timeout: 10000,
