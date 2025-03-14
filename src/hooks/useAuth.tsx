@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sendOTP = async (phoneNumber: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      console.log(`Sending OTP to ${phoneNumber}`);
       const success = await beRealApi.sendOTP(phoneNumber);
       
       if (success) {
@@ -75,11 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyOTP = async (phoneNumber: string, code: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      console.log(`Verifying OTP for ${phoneNumber} with code ${code}`);
       const success = await beRealApi.verifyOTP(phoneNumber, code);
       
       if (success) {
-        // For now, create a basic user object
-        // In the future, we'd fetch the actual user profile from BeReal
+        // For development purposes, create a basic user object
         const userData = {
           id: localStorage.getItem("bereal_user_id") || "unknown",
           username: phoneNumber,
