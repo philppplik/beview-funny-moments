@@ -2,16 +2,18 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Layout from "@/components/Layout";
-import { getPostById } from "@/services/berealService";
-import BeRealPost, { BeRealPostSkeleton } from "@/components/BeRealPost";
+import { beRealApi, BeRealPost } from "@/services/beRealApiService";
+import BeRealPostComponent, { BeRealPostSkeleton } from "@/components/BeRealPost";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 const PostDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const [post, setPost] = useState<any | null>(null);
+  const [post, setPost] = useState<BeRealPost | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -20,7 +22,7 @@ const PostDetail = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const fetchedPost = await getPostById(id);
+        const fetchedPost = await beRealApi.getPostById(id);
         
         if (!fetchedPost) {
           setError("Post not found");
@@ -31,13 +33,18 @@ const PostDetail = () => {
       } catch (err) {
         console.error("Failed to fetch post:", err);
         setError("Failed to load post");
+        toast({
+          title: "Error",
+          description: "Failed to load BeReal post. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchPost();
-  }, [id]);
+  }, [id, toast]);
 
   return (
     <Layout>
@@ -61,16 +68,16 @@ const PostDetail = () => {
             </Button>
           </div>
         ) : post ? (
-          <BeRealPost
+          <BeRealPostComponent
             id={post.id}
-            username={post.username}
-            userAvatar={post.userAvatar}
+            username={post.user.username}
+            userAvatar={post.user.profilePicture}
             caption={post.caption}
-            mainPhoto={post.mainPhoto}
-            selfiePhoto={post.selfiePhoto}
+            mainPhoto={post.primary}
+            selfiePhoto={post.secondary}
             location={post.location}
-            timestamp={post.timestamp}
-            likes={post.likes}
+            timestamp={post.takenAt}
+            likes={post.realmojis.length}
             comments={post.comments}
           />
         ) : null}

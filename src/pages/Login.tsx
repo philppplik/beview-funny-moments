@@ -11,20 +11,55 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { sendOTP, verifyOTP } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password) {
+    if (!phoneNumber) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please enter your phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Normalize phone number
+    let normalizedPhone = phoneNumber.replace(/\D/g, "");
+    // Ensure it has country code
+    if (!normalizedPhone.startsWith("+")) {
+      if (!normalizedPhone.startsWith("1")) {
+        normalizedPhone = "1" + normalizedPhone; // Default to US
+      }
+      normalizedPhone = "+" + normalizedPhone;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const success = await sendOTP(normalizedPhone);
+      if (success) {
+        setOtpSent(true);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!otpCode) {
+      toast({
+        title: "Error",
+        description: "Please enter the verification code",
         variant: "destructive",
       });
       return;
@@ -33,7 +68,7 @@ const Login = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await login(username, password);
+      const success = await verifyOTP(phoneNumber, otpCode);
       if (success) {
         navigate("/");
       }
@@ -49,54 +84,81 @@ const Login = () => {
           <CardHeader>
             <CardTitle className="text-2xl text-center">Login to BeView</CardTitle>
             <CardDescription className="text-center">
-              View funny BeReal moments from your friends
+              View BeReal moments from your friends
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoComplete="username"
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  disabled={isSubmitting}
-                />
-              </div>
-              
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  Note: This is a demo application. Any username/password combination will work.
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Logging in...
-                  </>
-                ) : (
-                  "Login"
-                )}
-              </Button>
-            </CardFooter>
-          </form>
+          
+          {!otpSent ? (
+            // Phone number form
+            <form onSubmit={handleSendOTP}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input
+                    id="phoneNumber"
+                    placeholder="Enter your phone number (with country code)"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Example: +1 555 123 4567 (include your country code)
+                  </p>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending code...
+                    </>
+                  ) : (
+                    "Send Verification Code"
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          ) : (
+            // OTP verification form
+            <form onSubmit={handleVerifyOTP}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="otpCode">Verification Code</Label>
+                  <Input
+                    id="otpCode"
+                    placeholder="Enter the 6-digit code"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="pt-2">
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    className="px-0 h-auto font-normal text-sm"
+                    onClick={() => setOtpSent(false)}
+                    disabled={isSubmitting}
+                  >
+                    Change phone number
+                  </Button>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Verify and Login"
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          )}
         </Card>
       </div>
     </Layout>

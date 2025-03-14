@@ -1,35 +1,50 @@
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import BeRealPost, { BeRealPostSkeleton } from "@/components/BeRealPost";
 import { Button } from "@/components/ui/button";
-import { getFeedPosts } from "@/services/berealService";
+import { beRealApi, BeRealPost as BeRealPostType } from "@/services/beRealApiService";
 import { RefreshCw } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<BeRealPostType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const fetchPosts = async (pageNum = 1, refresh = false) => {
+  const fetchPosts = async (pageNum = 0, refresh = false) => {
+    if (!isAuthenticated) return;
+    
     if (refresh) {
       setRefreshing(true);
-    } else if (pageNum === 1) {
+    } else if (pageNum === 0) {
       setIsLoading(true);
     }
 
     try {
-      const newPosts = await getFeedPosts(pageNum);
-      if (refresh || pageNum === 1) {
+      const newPosts = await beRealApi.getFriendsFeed(pageNum);
+      
+      if (refresh || pageNum === 0) {
         setPosts(newPosts);
       } else {
         setPosts(current => [...current, ...newPosts]);
       }
-      setHasMore(newPosts.length === 10);
+      
+      setHasMore(newPosts.length > 0);
     } catch (error) {
       console.error("Failed to fetch posts:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load BeReal posts. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -37,8 +52,8 @@ const Index = () => {
   };
 
   const handleRefresh = () => {
-    fetchPosts(1, true);
-    setPage(1);
+    fetchPosts(0, true);
+    setPage(0);
   };
 
   const loadMore = () => {
@@ -48,8 +63,27 @@ const Index = () => {
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+    
+    if (!authLoading && isAuthenticated) {
+      fetchPosts();
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="container py-8 max-w-md">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -80,14 +114,14 @@ const Index = () => {
               <BeRealPost
                 key={post.id}
                 id={post.id}
-                username={post.username}
-                userAvatar={post.userAvatar}
+                username={post.user.username}
+                userAvatar={post.user.profilePicture}
                 caption={post.caption}
-                mainPhoto={post.mainPhoto}
-                selfiePhoto={post.selfiePhoto}
+                mainPhoto={post.primary}
+                selfiePhoto={post.secondary}
                 location={post.location}
-                timestamp={post.timestamp}
-                likes={post.likes}
+                timestamp={post.takenAt}
+                likes={post.realmojis.length}
                 comments={post.comments}
               />
             ))

@@ -1,12 +1,14 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { beRealApi } from "@/services/beRealApiService";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: any | null;
-  login: (username: string, password: string) => Promise<boolean>;
+  sendOTP: (phoneNumber: string) => Promise<boolean>;
+  verifyOTP: (phoneNumber: string, code: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -20,53 +22,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is already logged in
   useEffect(() => {
-    const storedUser = localStorage.getItem("beview_user");
-    const storedToken = localStorage.getItem("beview_token");
+    const checkAuth = () => {
+      const isAuth = beRealApi.isAuthenticated();
+      setIsAuthenticated(isAuth);
+      
+      if (isAuth) {
+        // Get user data from localStorage
+        const storedUser = localStorage.getItem("beview_user");
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      }
+      
+      setIsLoading(false);
+    };
     
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    }
-    
-    setIsLoading(false);
+    checkAuth();
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const sendOTP = async (phoneNumber: string): Promise<boolean> => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
+      const success = await beRealApi.sendOTP(phoneNumber);
       
-      // In a real app, this would be an actual API call
-      // For this demo, we'll simulate a successful login
+      if (success) {
+        toast({
+          title: "OTP Sent",
+          description: "Please check your phone for the verification code.",
+        });
+      } else {
+        toast({
+          title: "Failed to send OTP",
+          description: "Please check your phone number and try again.",
+          variant: "destructive",
+        });
+      }
       
-      // Simulating API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock user data
-      const userData = {
-        id: "user123",
-        username,
-        displayName: username,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
-      };
-      
-      // Store user data and token
-      localStorage.setItem("beview_user", JSON.stringify(userData));
-      localStorage.setItem("beview_token", "mock-token-value");
-      
-      setUser(userData);
-      setIsAuthenticated(true);
-      
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${username}!`,
-      });
-      
-      return true;
+      return success;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Send OTP error:", error);
       toast({
-        title: "Login failed",
-        description: "Invalid username or password.",
+        title: "Error",
+        description: "Failed to send verification code. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyOTP = async (phoneNumber: string, code: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const success = await beRealApi.verifyOTP(phoneNumber, code);
+      
+      if (success) {
+        // For now, create a basic user object
+        // In the future, we'd fetch the actual user profile from BeReal
+        const userData = {
+          id: localStorage.getItem("bereal_user_id") || "unknown",
+          username: phoneNumber,
+          phone: phoneNumber,
+        };
+        
+        // Store user data
+        localStorage.setItem("beview_user", JSON.stringify(userData));
+        
+        setUser(userData);
+        setIsAuthenticated(true);
+        
+        toast({
+          title: "Login successful",
+          description: "You're now logged in to BeView!",
+        });
+      } else {
+        toast({
+          title: "Verification failed",
+          description: "Invalid code. Please try again.",
+          variant: "destructive",
+        });
+      }
+      
+      return success;
+    } catch (error) {
+      console.error("Verify OTP error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to verify code. Please try again.",
         variant: "destructive",
       });
       return false;
@@ -76,8 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    beRealApi.logout();
     localStorage.removeItem("beview_user");
-    localStorage.removeItem("beview_token");
     setUser(null);
     setIsAuthenticated(false);
     toast({
@@ -87,7 +130,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      isLoading, 
+      user, 
+      sendOTP,
+      verifyOTP,
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );
