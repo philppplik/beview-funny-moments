@@ -13,6 +13,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 
 const Login = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [normalizedPhoneNumber, setNormalizedPhoneNumber] = useState(""); // Neuer State
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,8 +67,8 @@ const Login = () => {
     try {
       const success = await sendOTP(normalizedPhone);
       if (success) {
+        setNormalizedPhoneNumber(normalizedPhone); // Nur normalized State aktualisieren
         setOtpSent(true);
-        setPhoneNumber(normalizedPhone);
       } else {
         toast({
           title: "Failed to send verification code",
@@ -102,7 +103,7 @@ const Login = () => {
     setIsSubmitting(true);
     
     try {
-      const success = await verifyOTP(phoneNumber, otpCode);
+      const success = await verifyOTP(normalizedPhoneNumber, otpCode); // Verwende normalized
       if (success) {
         toast({
           title: "Login successful",
@@ -147,7 +148,7 @@ const Login = () => {
                   <Input
                     id="phoneNumber"
                     placeholder="+1 555 123 4567"
-                    value={phoneNumber}
+                    value={phoneNumber} // Behält den Originalwert
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     disabled={isSubmitting}
                   />
@@ -199,7 +200,7 @@ const Login = () => {
                     </InputOTP>
                   </div>
                   <p className="text-xs text-muted-foreground text-center">
-                    Enter the 6-digit code sent to {phoneNumber}
+                    Enter the 6-digit code sent to {normalizedPhoneNumber} {/* Zeigt die normalisierte Nummer */}
                   </p>
                 </div>
                 
@@ -215,7 +216,10 @@ const Login = () => {
                     type="button" 
                     variant="link" 
                     className="px-0 h-auto font-normal text-sm"
-                    onClick={() => setOtpSent(false)}
+                    onClick={() => {
+                      setOtpSent(false);
+                      setNormalizedPhoneNumber(""); // Zurücksetzen beim Ändern
+                    }}
                     disabled={isSubmitting}
                   >
                     Change phone number
