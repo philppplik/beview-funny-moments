@@ -1,13 +1,114 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useEffect, useState } from "react";
+import Layout from "@/components/Layout";
+import BeRealPost, { BeRealPostSkeleton } from "@/components/BeRealPost";
+import { Button } from "@/components/ui/button";
+import { getFeedPosts } from "@/services/berealService";
+import { RefreshCw } from "lucide-react";
 
 const Index = () => {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchPosts = async (pageNum = 1, refresh = false) => {
+    if (refresh) {
+      setRefreshing(true);
+    } else if (pageNum === 1) {
+      setIsLoading(true);
+    }
+
+    try {
+      const newPosts = await getFeedPosts(pageNum);
+      if (refresh || pageNum === 1) {
+        setPosts(newPosts);
+      } else {
+        setPosts(current => [...current, ...newPosts]);
+      }
+      setHasMore(newPosts.length === 10);
+    } catch (error) {
+      console.error("Failed to fetch posts:", error);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchPosts(1, true);
+    setPage(1);
+  };
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchPosts(nextPage);
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <Layout>
+      <div className="container py-8 max-w-md">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">BeReal Feed</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex gap-2 items-center"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+
+        <div className="space-y-6">
+          {isLoading ? (
+            // Show skeletons when loading
+            Array.from({ length: 3 }).map((_, index) => (
+              <BeRealPostSkeleton key={`skeleton-${index}`} />
+            ))
+          ) : posts.length > 0 ? (
+            // Show posts
+            posts.map(post => (
+              <BeRealPost
+                key={post.id}
+                id={post.id}
+                username={post.username}
+                userAvatar={post.userAvatar}
+                caption={post.caption}
+                mainPhoto={post.mainPhoto}
+                selfiePhoto={post.selfiePhoto}
+                location={post.location}
+                timestamp={post.timestamp}
+                likes={post.likes}
+                comments={post.comments}
+              />
+            ))
+          ) : (
+            // Show empty state
+            <div className="text-center py-12">
+              <p className="text-lg text-muted-foreground">No BeReal posts found</p>
+            </div>
+          )}
+
+          {/* Load more button */}
+          {!isLoading && posts.length > 0 && hasMore && (
+            <div className="flex justify-center mt-8">
+              <Button onClick={loadMore} variant="outline">
+                Load More
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
